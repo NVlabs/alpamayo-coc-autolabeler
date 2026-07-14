@@ -441,6 +441,15 @@ Field meanings:
 If `data_loader.video.save_segment_videos` is set to true, the segment videos are saved under:
 `experiments/video_segment` folder by default.
 
+## Evaluation
+
+For scoring autolabeled CoC outputs directly from `cot_*.yaml` files, use the
+three-stage VLM validators under
+[`scripts/coc_validation_stage/`](scripts/coc_validation_stage/). They do not
+require human golden labels and accept the same `model_name` aliases and
+credential setup as CoC autolabeling (`gpt5.5`, `qwen3.5_35b`, and so on).
+See that README for usage examples.
+
 ## Troubleshooting
 
 ### 1. vLLM Import Fails With `libtorch_cuda.so`

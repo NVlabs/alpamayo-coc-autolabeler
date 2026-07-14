@@ -56,3 +56,11 @@ coc_labeling = [
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint.per-file-ignores]
+"scripts/coc_validation_stage/eval_stage1_coc_evidence_vllm.py" = ["E501"]
+"scripts/coc_validation_stage/eval_stage2_coc_behavior_vllm.py" = ["E501"]
+"scripts/coc_validation_stage/eval_stage3_coc_causal_vllm.py" = ["E501"]
