@@ -33,6 +33,7 @@ Do not file security issues publicly here.
 - [Run CoC Autolabeling](#run-coc-autolabeling)
   - [Step 3: Generate CoC Labels](#step-3-generate-coc-labels)
   - [Output Structure](#output-structure)
+- [Step 4: Validate CoC Labels](#step-4-validate-coc-labels)
 - [Troubleshooting](#troubleshooting)
   - [1. vLLM Import Fails With `libtorch_cuda.so`](#1-vllm-import-fails-with-libtorch_cudaso)
   - [2. Local Qwen Fails With Unsupported CUDA/PTX](#2-local-qwen-fails-with-unsupported-cudaptx)
@@ -55,6 +56,8 @@ Do not file security issues publicly here.
    since these transitions are likely to contain decision-making context.
 3. **Step 3: Generate CoC Labels**: run the VLM pipeline on selected keyframes
    to produce chain-of-causation labels.
+4. **Step 4: Validate CoC Labels**: run the optional VLM-based validation
+   stages to identify potentially lower-quality labels prior to downstream use.
 
 ## Paper
 
@@ -441,14 +444,20 @@ Field meanings:
 If `data_loader.video.save_segment_videos` is set to true, the segment videos are saved under:
 `experiments/video_segment` folder by default.
 
-## Evaluation
+## Step 4: Validate CoC Labels
 
-For scoring autolabeled CoC outputs directly from `cot_*.yaml` files, use the
-three-stage VLM validators under
-[`scripts/coc_validation_stage/`](scripts/coc_validation_stage/). They do not
-require human golden labels and accept the same `model_name` aliases and
-credential setup as CoC autolabeling (`gpt5.5`, `qwen3.5_35b`, and so on).
-See that README for usage examples.
+Use the optional three-stage VLM validation pipeline under
+[`scripts/coc_validation_stage/`](scripts/coc_validation_stage/) to generate
+quality signals from `cot_*.yaml` files. The stages check the grounding of scene
+factors cited by a label, agreement between the labeled and observed ego
+behavior, and whether the causal explanation is supported and consistent with
+the video.
+
+These signals are intended to help identify potentially lower-quality CoC
+labels for downstream use or data filtering. The scripts do not require
+human-provided labels. The validators accept the same `model_name` aliases and
+credential setup as CoC autolabeling (e.g., `gpt5.5`, `qwen3.5_35b`). See the
+validation-stage README for examples.
 
 ## Troubleshooting
 
@@ -553,7 +562,17 @@ This autolabeling tool is provided for research and development in the autonomou
 
 Because this pipeline relies on VLMs, generated CoC outputs may contain errors, including incorrect maneuver attribution (for example, right vs. left lane change), hallucinated objects, or inaccurate temporal-causal reasoning about surrounding agents and ego behavior.
 
-To improve the CoC quality, use human auditing and/or a hybrid post-processing workflow that combines review with heuristic checks. Example safeguards include but are not limited to validating outputs against object-detection signals (for example, lead-vehicle or pedestrian presence), planner/behavior signals (for example, nudging or yielding), and human correction loops. These safeguards are outside the scope of the current release.
+To improve CoC quality, use human auditing and/or a hybrid post-processing
+workflow that combines review with heuristic checks. Example safeguards include
+validating outputs against object-detection signals (for example, lead-vehicle
+or pedestrian presence), planner or behavior signals (for example, nudging or
+yielding), and human correction loops.
+
+To facilitate this process, this release also includes VLM-based validation
+stages that provide signals for identifying potentially lower-quality CoC
+labels for downstream review or filtering. Additional application-specific
+safeguards, including human correction loops, are still recommended and remain
+outside the scope of the current release.
 
 By using this tool, you acknowledge that it is intended to support scientific inquiry, benchmarking, and exploration, and is not a substitute for a validated or certified AV stack. Developers and contributors disclaim responsibility and liability for use of the model and its outputs.
 
