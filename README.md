@@ -10,6 +10,7 @@ RSGs retain the entities, events, relationships and evidence behind those explan
 - [Choose a workflow](#choose-a-workflow)
 - [Installation and packaging](#installation-and-packaging)
 - [Disclaimer](#disclaimer)
+- [Citation](#citation)
 - [License](#license)
 
 ## Choose a workflow
@@ -62,9 +63,32 @@ This autolabeling tool is provided for research and development in the autonomou
 
 Because this pipeline relies on VLMs, generated CoC outputs may contain errors, including incorrect maneuver attribution (for example, right vs. left lane change), hallucinated objects, or inaccurate temporal-causal reasoning about surrounding agents and ego behavior.
 
-To improve the CoC quality, use human auditing and/or a hybrid post-processing workflow that combines review with heuristic checks. Example safeguards include but are not limited to validating outputs against object-detection signals (for example, lead-vehicle or pedestrian presence), planner/behavior signals (for example, nudging or yielding), and human correction loops. These safeguards are outside the scope of the current release.
+To improve CoC quality, use human auditing and/or a hybrid post-processing
+workflow that combines review with heuristic checks. Example safeguards include
+validating outputs against object-detection signals (for example, lead-vehicle
+or pedestrian presence), planner or behavior signals (for example, nudging or
+yielding), and human correction loops.
+
+To facilitate this process, this release also includes VLM-based validation
+stages that provide signals for identifying potentially lower-quality CoC
+labels for downstream review or filtering. Additional application-specific
+safeguards, including human correction loops, are still recommended and remain
+outside the scope of the current release.
 
 By using this tool, you acknowledge that it is intended to support scientific inquiry, benchmarking, and exploration, and is not a substitute for a validated or certified AV stack. Developers and contributors disclaim responsibility and liability for use of the model and its outputs.
+
+## Citation
+
+If you use this autolabeling pipeline in your research, please cite:
+
+```bibtex
+@article{nvidia2025alpamayo,
+      title={{Alpamayo 1}: Bridging Reasoning and Action Prediction for Generalizable Autonomous Driving in the Long Tail},
+      author={NVIDIA and Yan Wang and Wenjie Luo and Junjie Bai and Yulong Cao and Tong Che and Ke Chen and Yuxiao Chen and Jenna Diamond and Yifan Ding and Wenhao Ding and Liang Feng and Greg Heinrich and Jack Huang and Peter Karkus and Boyi Li and Pinyi Li and Tsung-Yi Lin and Dongran Liu and Ming-Yu Liu and Langechuan Liu and Zhijian Liu and Jason Lu and Yunxiang Mao and Pavlo Molchanov and Lindsey Pavao and Zhenghao Peng and Mike Ranzinger and Ed Schmerling and Shida Shen and Yunfei Shi and Sarah Tariq and Ran Tian and Tilman Wekel and Xinshuo Weng and Tianjun Xiao and Eric Yang and Xiaodong Yang and Yurong You and Xiaohui Zeng and Wenyuan Zhang and Boris Ivanovic and Marco Pavone},
+      year={2025},
+      journal={arXiv preprint arXiv:2511.00088},
+}
+```
 
 ## License
 
