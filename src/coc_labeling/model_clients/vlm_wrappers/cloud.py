@@ -16,7 +16,6 @@
 """Cloud-hosted OpenAI wrapper implementation for VLM inference."""
 
 import logging
-import os
 import time
 from typing import Any, Dict, List, Optional
 
@@ -28,13 +27,6 @@ logger = logging.getLogger(__name__)
 
 MAX_CLOUD_REQUEST_ATTEMPTS = 5
 RETRYABLE_CLOUD_STATUS_CODES = {408, 409, 429}
-
-NV_INFERENCE_MODEL_MAP = {
-    "gpt5": "us/azure/openai/gpt-5",
-    "gpt-5": "us/azure/openai/gpt-5",
-    "gpt5.5": "openai/openai/gpt-5.5",
-    "gpt-5.5": "openai/openai/gpt-5.5",
-}
 
 
 def _is_gpt5_family_model(model_name: str) -> bool:
@@ -104,14 +96,9 @@ class OpenAIWrapper(BaseWrapper):
         }
         self.model_name = model_name_map.get(model_name, model_name)
         self.timeout_sec = timeout_sec
-        cloud_client = create_cloud_openai_client(api_version="2025-01-01-preview")
+        cloud_client = create_cloud_openai_client()
         self.client = cloud_client.client
         self.client_backend = cloud_client.backend
-        if self.client_backend == "nvidia_inference":
-            self.model_name = os.environ.get(
-                "NV_INFERENCE_MODEL",
-                NV_INFERENCE_MODEL_MAP.get(self.model_name, self.model_name),
-            )
         logger.info(
             "Using OpenAI-compatible backend '%s' with model '%s'.",
             self.client_backend,
@@ -138,7 +125,7 @@ class OpenAIWrapper(BaseWrapper):
         token_kwargs = {token_param_name: max_tokens}
         extra_kwargs = {}
         # Some GPT-5 deployments only support default sampling behavior.
-        if (not is_gpt5_family) or temperature == 1:
+        if not is_gpt5_family:
             extra_kwargs["temperature"] = temperature
         # Keep seed for non-GPT-5 models to avoid unsupported-parameter errors.
         if not is_gpt5_family:
@@ -163,19 +150,7 @@ class OpenAIWrapper(BaseWrapper):
                         timeout=self.timeout_sec,
                     )
             except Exception as exc:
-                if "Unauthorized: The token has expired" in str(exc):
-                    logger.info(
-                        "Token expired on attempt %d/%d. Requesting a new OAuth token.",
-                        tried_cnt + 1,
-                        max_cnt,
-                    )
-                    if self.client_backend == "nvidia_azure":
-                        cloud_client = create_cloud_openai_client(api_version="2025-01-01-preview")
-                        self.client = cloud_client.client
-                        self.client_backend = cloud_client.backend
-                    else:
-                        raise
-                elif "ResponsibleAIPolicyViolation" in str(exc):
+                if "ResponsibleAIPolicyViolation" in str(exc):
                     logger.warning("Responsible AI Policy Violation.")
                     return {"content": "Responsible AI Policy Violation."}
                 elif "token rate limit" in str(exc):

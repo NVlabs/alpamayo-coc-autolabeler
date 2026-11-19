@@ -1,0 +1,12 @@
+{
+  "status": "ready",
+  "url": "https://api.openai.com/v1",
+  "model": "gpt-6.1-sol",
+  "api_key_env": "OPENAI_API_KEY",
+  "request_profile": "openai_reasoning",
+  "reasoning_effort": "medium",
+  "pricing": {
+    "input_usd_per_million_tokens": null,
+    "output_usd_per_million_tokens": null
+  }
+}

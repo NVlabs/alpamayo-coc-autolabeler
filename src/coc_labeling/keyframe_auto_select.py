@@ -39,6 +39,8 @@ from typing import MutableMapping
 
 from tqdm import tqdm
 
+from coc_labeling.request import matches_selection
+
 from coc_labeling.data_loader.meta_action_loader import (
     meta_action_lane,
     meta_action_lateral,
@@ -103,10 +105,8 @@ def parse_txt_file(
             action_raw, start, end = parsed
             duration = end - start
             action = canonicalize_action(action_raw)
-            if (
-                action in selected_actions
-                and duration >= min_duration
-                and min_start_ts <= start <= max_start_ts
+            if matches_selection(
+                action, start, end, selected_actions, min_duration, min_start_ts, max_start_ts
             ):
                 records.append(
                     ActionRecord(

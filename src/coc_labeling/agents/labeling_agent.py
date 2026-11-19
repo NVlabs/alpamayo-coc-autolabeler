@@ -167,7 +167,7 @@ class LabelingAgent:
                 "clip_id": segment_info.clip_id,
                 "event_start_timestamp": segment_info.event_start_timestamp,
                 # NOTE this is not actually the frame number from the video.
-                # It is an interval count at 10Hz from the start of the clipgt data.
+                # It is an interval count at 10Hz from the start of the cached scene.
                 "event_start_frame": segment_info.event_start_clipgt_index,
             }
 
@@ -217,7 +217,7 @@ class LabelingAgent:
                             )
                     else:
                         # Kept for compatibility with prior usage. Unless the video
-                        # is cropped to the clipgt, frames can be misaligned.
+                        # is cropped to the cached scene, frames can be misaligned.
                         video_data = self.video_loader.load(
                             segment_data["clip_id"],
                             segment_data["event_start_frame"],

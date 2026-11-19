@@ -1,0 +1,17 @@
+# Generated RSG artifacts.
+outputs/
+keyframe_based/configs/experiments/generated/
+# Local experiment notes (plan/analysis docs are never committed) and presentation exports.
+keyframe_based/docs/exp/
+keyframe_based/docs/infra/
+keyframe_based/docs/htmls/
+keyframe_based/playground/
+
+keyframe_rsg/configs/experiments/generated/
+keyframe_rsg/docs/exp/
+keyframe_rsg/docs/infra/
+keyframe_rsg/docs/htmls/
+keyframe_rsg/playground/
+
+# Local release review plans and validation receipts.
+/releases/local/

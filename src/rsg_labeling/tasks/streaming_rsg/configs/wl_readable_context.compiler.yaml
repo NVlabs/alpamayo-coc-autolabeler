@@ -1,0 +1,28 @@
+# WL-ORIGINAL sensor-backed foundation: 480px front-wide, 2Hz action input, one refinement.
+infra: {}
+playground:
+  env:
+    sensor_manifest: /absolute/path/to/sensors.json
+    anchor_mode: discovery
+    budgets:
+      max_ops: 96
+      wall_clock_s: 2700
+    cameras:
+      - camera_front_wide_120fov
+    image_max_height_px: 480
+    max_fps: 5.0
+    max_frames: 128
+    meta_action_manifest: /absolute/path/to/meta_actions.json
+    navigation_manifest: /absolute/path/to/navigation.json
+    sources:
+      - ego_pose
+      - navigation
+      - production_meta_actions
+  task: none
+policy:
+  focus:
+    max_requests: 2
+  observe:
+    max_fps: 1.0
+    max_frames: 3
+    windows: tile:4s

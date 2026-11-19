@@ -1,0 +1,8 @@
+include conftest.py LICENSE SECURITY.md README.md CHANGELOG.md Dockerfile requirements-lock.txt
+graft src
+graft docs
+graft tests
+graft tools
+graft scripts
+graft .github
+global-exclude *.py[cod]

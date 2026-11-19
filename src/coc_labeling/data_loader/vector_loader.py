@@ -19,6 +19,8 @@ from typing import Any, Dict, Optional, Tuple
 import numpy as np
 from omegaconf import DictConfig, open_dict
 
+from coc_labeling.request import render_speed_text
+
 from coc_labeling.data_loader.trajdata import convert_trajdata2data_dict
 from coc_labeling.utils.data import (
     get_scene_batch_from_scene_id_ts,
@@ -137,70 +139,8 @@ class VectorLoader:
         return ego_hist_text, ego_fut_text
 
     def convert_speed_to_text(self, data_dict: Dict[str, Any]) -> Tuple[str, str, str]:
-        """Format ego longitudinal/lateral speed arrays into prompt text blocks.
-
-        Args:
-            data_dict: Runtime dictionary containing ego speed arrays.
-
-        Returns:
-            Three strings: history text, future text, and combined full-series text.
-        """
-        ego_hist_longitudinal_speed: np.ndarray = data_dict["ego_hist_longitudinal_speed"]
-        ego_hist_lateral_speed: np.ndarray = data_dict["ego_hist_lateral_speed"]
-        ego_fut_longitudinal_speed: np.ndarray = data_dict["ego_fut_longitudinal_speed"]
-        ego_fut_lateral_speed: np.ndarray = data_dict["ego_fut_lateral_speed"]
-
-        cfg = self._require_vector_config()
-        dt = float(cfg.time_interval)
-        hist_count = int(ego_hist_longitudinal_speed.shape[0])
-        fut_count = int(ego_fut_longitudinal_speed.shape[0])
-
-        hist_timestamps = [-(hist_count - 1 - i) * dt for i in range(hist_count)]
-        fut_timestamps = [(i + 1) * dt for i in range(fut_count)]
-
-        def _format_speed_series(
-            timestamps: list[float], values: np.ndarray, axis_name: str
-        ) -> str:
-            """Render timestamped scalar series in ``[(t=.., axis=..), ...]`` format."""
-            pairs = ", ".join(
-                f"(t={ts:.1f}s, {axis_name}={float(v):.3f} m/s)"
-                for ts, v in zip(timestamps, values)
-            )
-            return f"[{pairs}]"
-
-        # Convert to text for separate history and future windows.
-        hist_long_series = _format_speed_series(
-            hist_timestamps, ego_hist_longitudinal_speed, "v_long"
-        )
-        hist_lat_series = _format_speed_series(hist_timestamps, ego_hist_lateral_speed, "v_lat")
-        fut_long_series = _format_speed_series(fut_timestamps, ego_fut_longitudinal_speed, "v_long")
-        fut_lat_series = _format_speed_series(fut_timestamps, ego_fut_lateral_speed, "v_lat")
-        ego_hist_text = (
-            "History speed samples:\n"
-            f"- Longitudinal (m/s): {hist_long_series}\n"
-            f"- Lateral (m/s): {hist_lat_series}"
-        )
-        ego_fut_text = (
-            "Future speed samples:\n"
-            f"- Longitudinal (m/s): {fut_long_series}\n"
-            f"- Lateral (m/s): {fut_lat_series}"
-        )
-
-        # convert to text for the whole segment
-        ego_longitudinal_speed = np.concatenate(
-            (ego_hist_longitudinal_speed, ego_fut_longitudinal_speed)
-        )
-        ego_lateral_speed = np.concatenate((ego_hist_lateral_speed, ego_fut_lateral_speed))
-        all_timestamps = hist_timestamps + fut_timestamps
-        all_long_series = _format_speed_series(all_timestamps, ego_longitudinal_speed, "v_long")
-        all_lat_series = _format_speed_series(all_timestamps, ego_lateral_speed, "v_lat")
-        ego_text = (
-            "Ego speed time series (relative to event time t=0.0s):\n"
-            f"- Longitudinal (m/s): {all_long_series}\n"
-            f"- Lateral (m/s): {all_lat_series}\n"
-            "Positive lateral speed means rightward motion, negative means leftward motion."
-        )
-        return ego_hist_text, ego_fut_text, ego_text
+        """Render history, future and combined ego speed text."""
+        return render_speed_text(data_dict, self._require_vector_config().time_interval)
 
     def load(self, clip_id: str, event_start: int) -> Dict[str, Any]:
         """Load vector features for one clip segment and attach speed prompt text.

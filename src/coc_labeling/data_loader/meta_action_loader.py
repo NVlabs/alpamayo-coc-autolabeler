@@ -18,6 +18,8 @@ import os
 import re
 from typing import Any, Dict, List, Optional, Tuple
 
+from coc_labeling.request import context_frame_ticks, render_meta_action_text
+
 # V2 canonical meta-action labels (snake_case).
 meta_action_longitu: List[str] = [
     "gentle_acceleration",
@@ -350,23 +352,13 @@ class MetaActionLoader:
         if frame_interval <= 0:
             raise ValueError("meta_action_config.time_interval * fps must be > 0 for sampling.")
         event_start_frame = max(0, min(int(event_start_frame), len(frames)))
-        hist_start_frame = event_start_frame - hist_length_frame
-        fut_end_frame = event_start_frame + fut_length_frame
-
-        hist_start_frame = max(hist_start_frame, 0)
-        fut_end_frame = min(fut_end_frame, len(frames))
-
-        hist_meta_actions: List[Dict[str, str]] = []
-        hist_ts: List[int] = []
-        for frame_index in range(hist_start_frame, event_start_frame, frame_interval):
-            hist_meta_actions.append(frames[frame_index])
-            hist_ts.append(frame_index - event_start_frame)
-
-        fut_meta_actions: List[Dict[str, str]] = []
-        fut_ts: List[int] = []
-        for frame_index in range(event_start_frame, fut_end_frame, frame_interval):
-            fut_meta_actions.append(frames[frame_index])
-            fut_ts.append(frame_index - event_start_frame)
+        hist_ticks, fut_ticks = context_frame_ticks(
+            len(frames), event_start_frame, hist_length_frame, fut_length_frame, frame_interval
+        )
+        hist_meta_actions = [frames[t] for t in hist_ticks]
+        fut_meta_actions = [frames[t] for t in fut_ticks]
+        hist_ts = [t - event_start_frame for t in hist_ticks]
+        fut_ts = [t - event_start_frame for t in fut_ticks]
 
         all_meta_actions = hist_meta_actions + fut_meta_actions
         all_ts = hist_ts + fut_ts
@@ -382,26 +374,9 @@ class MetaActionLoader:
 
     def process_meta_action(self, action_list: List[Dict[str, str]], ts_list: List[int]) -> str:
         """Convert sampled meta-action dicts into prompt-friendly text lines."""
-        result: List[str] = []
-        use_ts_prefix = bool(getattr(self.meta_action_config, "add_ts_prefix", False))
-        for idx, action in enumerate(action_list):
-            base_action = (
-                f"longitudinal: {action['Longitudinal']}, "
-                f"lateral: {action['Lateral']}, lane: {action['Lane']}"
-            )
-            if use_ts_prefix:
-                ts_sec = ts_list[idx] / self.meta_action_config.fps
-                # Relative timestamp with sign makes history/future separation explicit.
-                formatted_action = f"(t={ts_sec:+.1f}s) {base_action}"
-            else:
-                formatted_action = base_action
-            result.append(formatted_action)
-
-        if use_ts_prefix:
-            header = "\nMeta-actions by sampled timestamp (relative to event, unit: seconds):"
-            return header + "\n" + "\n".join(result)
-
-        return "\n" + "\n".join(result)
+        add_ts_prefix = bool(getattr(self.meta_action_config, "add_ts_prefix", False))
+        fps = self.meta_action_config.fps if add_ts_prefix and action_list else None
+        return render_meta_action_text(action_list, ts_list, fps, add_ts_prefix)
 
     def load(self, clip_id: str, event_start_frame: Optional[int] = None) -> Dict[str, Any]:
         """Load and format meta-action features for one clip/segment."""

@@ -4,7 +4,6 @@ about: Suggest an idea for Alpamayo
 title: "[FEA]"
 labels: "enhancement"
 assignees: 'yesfandiari'
-
 ---
 
 **Is your feature request related to a problem? Please describe.**

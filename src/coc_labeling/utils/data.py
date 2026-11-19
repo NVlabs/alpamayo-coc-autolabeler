@@ -15,12 +15,15 @@
 
 """Trajdata dataset helpers used by coc_labeling data loaders."""
 
+import hashlib
 import logging
+from pathlib import Path
 from collections import defaultdict
 from types import SimpleNamespace
 from typing import Any, Dict, Iterable, Mapping, Optional, Tuple, Union, cast
 
 import numpy as np
+import pandas as pd
 
 # Compatibility for NumPy 2.x where np.string_ was removed (used by some trajdata releases).
 if not hasattr(np, "string_"):
@@ -187,3 +190,39 @@ def get_clip_timing_info(dataset: Any, clip_id: str) -> Tuple[Optional[int], Opt
         if hasattr(env, "clip_start_micros") and clip_id in env.clip_start_micros:
             return int(env.clip_start_micros[clip_id]), float(env.metadata.dt * 1e6)
     return None, None
+
+
+def load_cached_pai_ego(cache_dir: Path, clip_id: str) -> tuple[pd.DataFrame, dict]:
+    """Read complete 10 Hz ego poses through TrajData's existing cache reader.
+
+    Args:
+        cache_dir: Existing trusted TrajData cache root containing the ``pai`` environment.
+        clip_id: PAI clip UUID whose scene metadata and agent table are already cached.
+
+    Returns:
+        Ego rows limited to the declared scene ticks, with their source checksum and tick rate.
+
+    Raises:
+        ValueError: Scene identity, sampling interval or measured pose coverage is inconsistent.
+        FileNotFoundError: The existing scene cache is incomplete; no recaching is attempted.
+    """
+    from trajdata.caching import EnvCache
+    from trajdata.caching.df_cache import DataFrameCache
+
+    scene = EnvCache(cache_dir).load_scene("pai", clip_id, 0.1)
+    if scene.name != clip_id or scene.env_name != "pai" or scene.dt != 0.1:
+        raise ValueError("PAI cache identity or sampling interval differs")
+    cache_path = DataFrameCache.scene_cache_dir(
+        cache_dir, "pai", clip_id
+    ) / DataFrameCache._agent_data_file(0.1)
+    if not cache_path.is_file():
+        raise FileNotFoundError(cache_path)
+    ego = DataFrameCache(cache_dir, scene).scene_data_df.xs("ego", level="agent_id").sort_index()
+    ego = ego.loc[0 : scene.length_timesteps - 1].copy()
+    if not np.array_equal(ego.index.to_numpy(), np.arange(scene.length_timesteps)):
+        raise ValueError("PAI cache does not cover its declared scene ticks")
+    if not np.isfinite(ego[["x", "y", "z", "heading"]].to_numpy()).all():
+        raise ValueError("nonfinite cached PAI ego motion")
+    with cache_path.open("rb") as handle:
+        checksum = hashlib.file_digest(handle, "sha256").hexdigest()
+    return ego, {"cache_sha256": checksum, "num_ticks": len(ego), "tick_us": 100_000}

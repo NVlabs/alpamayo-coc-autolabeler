@@ -99,39 +99,21 @@ The evaluator uses the same `model_name` aliases as CoC autolabeling:
 - `gpt5`
 - `gpt5.5`
 
-Pass the alias with `--model-name`. The scripts auto-detect credentials and API
-endpoints using the same precedence as the autolabeler:
-
-1. NVIDIA-hosted Azure OpenAI (`NVHOST_OAI_CLIENT_ID` +
-   `NVHOST_OAI_CLIENT_SECRET`)
-2. NVIDIA inference (`NVIDIA_API_KEY`)
-3. Standard OpenAI (`OPENAI_API_KEY`)
-4. Local Qwen via an OpenAI-compatible vLLM server (`LOCAL_OPENAI_BASE_URL` +
-   `LOCAL_OPENAI_API_KEY`)
+Pass the alias with `--model-name`. OpenAI GPT uses `OPENAI_API_KEY`, with an
+optional caller-owned `OPENAI_BASE_URL`. Local Qwen uses an OpenAI-compatible vLLM
+server configured through `LOCAL_OPENAI_BASE_URL` and `LOCAL_OPENAI_API_KEY`.
+Explicit `--api-base` and `--api-key-env` select a compatible endpoint and its key.
 
 For label quality, the recommended evaluator models are `gpt5.5` and
 `qwen3.5_397b_fp8`. For local-only runs, start with `qwen3.5_397b_fp8` when
 the machine has enough GPU memory; otherwise use `qwen3.5_35b`.
 
-### Cloud GPT (`gpt5`, `gpt5.5`)
+### OpenAI GPT (`gpt5`, `gpt5.5`)
 
-NVIDIA-hosted Azure OpenAI:
-
-```bash
-export NVHOST_OAI_CLIENT_ID="your_client_id"
-export NVHOST_OAI_CLIENT_SECRET="your_client_secret"
-```
-
-NVIDIA inference:
+Use a user-owned OpenAI API key:
 
 ```bash
-export NVIDIA_API_KEY="nvapi-your-nvidia-api-key"
-```
-
-Standard OpenAI:
-
-```bash
-export OPENAI_API_KEY="sk-your-openai-api-key"
+export OPENAI_API_KEY="your-openai-api-key"
 ```
 
 Hosted GPT endpoints may reject explicit sampling parameters. The scripts omit
@@ -155,19 +137,18 @@ thinking mode in the chat template.
 
 Optional overrides:
 
-- `--provider-model`: provider-side model ID (similar to `NV_INFERENCE_MODEL` or
-  `LOCAL_OPENAI_MODEL`)
+- `--provider-model`: explicit provider-side model ID, overriding the public alias
 - `--api-base`: force a specific API base URL instead of auto-detection
 - `--api-key-env`: read the API key from a custom environment variable name
 
 ## Examples
 
-### Cloud GPT-5.5 on NVIDIA inference
+### OpenAI GPT-5.5
 
 ```bash
-cd projects/coc_label_oss/scripts/coc_validation_stage
+cd scripts/coc_validation_stage
 
-export NVIDIA_API_KEY="nvapi-your-nvidia-api-key"
+export OPENAI_API_KEY="your-openai-api-key"
 COC_RESULT=/path/to/experiments/20260609_105441_pai_smoke_gpt55
 VIDEO_ROOT=/path/to/extracted_pai_videos
 
@@ -250,7 +231,7 @@ Use `--resume` to skip rows already present in the JSONL file.
 
 ## Troubleshooting
 
-**Cloud GPT request fails with temperature rejection**
+**OpenAI GPT request fails with temperature rejection**
 
 Use `--model-name gpt5.5` (or `gpt5`) and let the scripts omit temperature by
 default. Do not pass `--temperature` unless you know the endpoint accepts it.

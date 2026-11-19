@@ -52,6 +52,20 @@ def prepare_lateral_data(scenario: Any, agent_token: str, smooth_window: int = 5
     xy = agent_xyh[:, :2]
     h = agent_xyh[:, -1]
 
+    # Velocity along heading, align length to L
+    speed_along_t = scenario.agent_trajdata["agent_speed_along_heading"][agent_idx]
+    speed_along = (
+        speed_along_t.detach().cpu().numpy().astype(float)
+        if hasattr(speed_along_t, "detach")
+        else np.asarray(speed_along_t, dtype=float)
+    )
+    return prepare_lateral_features(xy, h, speed_along, smooth_window)
+
+
+def prepare_lateral_features(
+    xy: np.ndarray, h: np.ndarray, speed_along: np.ndarray, smooth_window: int = 5
+) -> pd.DataFrame:
+    """Build wrap-safe lateral features on the uniform 10 Hz grid."""
     # Compute per-tick distance and heading change in radians
     diff_xy = np.diff(xy, axis=0)
     dist = np.linalg.norm(diff_xy, axis=1)  # length L = T-1
@@ -65,13 +79,6 @@ def prepare_lateral_data(scenario: Any, agent_token: str, smooth_window: int = 5
     nz = dist > 1e-6
     rate[nz] = dh[nz] / dist[nz]
 
-    # Velocity along heading, align length to L
-    speed_along_t = scenario.agent_trajdata["agent_speed_along_heading"][agent_idx]
-    speed_along = (
-        speed_along_t.detach().cpu().numpy().astype(float)
-        if hasattr(speed_along_t, "detach")
-        else np.asarray(speed_along_t, dtype=float)
-    )
     L = len(rate)
     if len(speed_along) >= L:
         speed_along = speed_along[:L]
@@ -100,6 +107,14 @@ def segment_lateral(
     average_turn_rate_deg_per_m.
     """
     df_series = prepare_lateral_data(scenario, agent_token)
+    return segment_lateral_features(df_series, segmentation_thresholds)
+
+
+def segment_lateral_features(
+    df_series: pd.DataFrame,
+    segmentation_thresholds: List[Threshold] = LATERAL_SEGMENTATION_THRESHOLDS,
+) -> pd.DataFrame:
+    """Segment prepared lateral features using the standalone motion rules."""
 
     # Build boolean state arrays for each provided threshold (above/below regime)
     threshold_states = []
