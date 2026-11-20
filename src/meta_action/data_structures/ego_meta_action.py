@@ -13,12 +13,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import os
-from typing import Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any
 
 import pandas as pd
 
-from meta_action.data_structures.scenario import TemporalScenario
 from meta_action.processor.lane.classification import classify_lane
 from meta_action.processor.lane.config import (
     DEFAULT_LANE_MIN_LEN_TICKS,
@@ -39,6 +40,9 @@ from meta_action.processor.longitudinal.config import (
 from meta_action.processor.longitudinal.segmentation import segment_longitudinal
 from meta_action.utils.constant import DELTA_TIMESTAMP
 
+if TYPE_CHECKING:
+    from meta_action.data_structures.scenario import TemporalScenario
+
 
 def _safe_float(value: Any, default: float = 0.0) -> float:
     """Safely coerce a value to float, falling back to `default` on failure."""
@@ -58,7 +62,7 @@ def _weighted_avg(a: float, wa: float, b: float, wb: float) -> float:
     return (a * wa + b * wb) / denom
 
 
-def _resolve_lane_debug_dir(scenario: TemporalScenario) -> Optional[str]:
+def _resolve_lane_debug_dir(scenario: TemporalScenario) -> str | None:
     """Resolve lane-debug output directory from scenario config or environment."""
     cfg = getattr(scenario, "cfg", None)
     if isinstance(cfg, dict) and cfg.get("lane_debug", False):
@@ -72,7 +76,7 @@ def _dump_lane_segment_debug(
     scenario: TemporalScenario,
     agent_token: str,
     stage: str,
-    df: Optional[pd.DataFrame],
+    df: pd.DataFrame | None,
 ) -> None:
     """Write lane-segment debug dataframe for one agent and pipeline stage."""
     debug_dir = _resolve_lane_debug_dir(scenario)
@@ -840,7 +844,7 @@ def _slice_segment(
     return out
 
 
-def _retime_long_slightly_shift(seg: Dict[str, Any]) -> Optional[List[Dict[str, Any]]]:
+def _retime_long_slightly_shift(seg: dict[str, Any]) -> list[dict[str, Any]] | None:
     """Re-time very long low-rate shift artifacts into short windows plus LaneKeep
     fillers, keeping likely true-positive windows while removing broad false spans.
     """

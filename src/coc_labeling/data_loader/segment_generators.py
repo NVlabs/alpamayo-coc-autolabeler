@@ -676,7 +676,7 @@ class ParsedSegmentGenerator(SegmentListGenerator):
         Returns:
             Updated segment data with timestamp info, or None if timing unavailable
         """
-        # Compute the event_start_timestamp from the clipgt data start and dt values.
+        # Compute the event_start_timestamp from the cached scene start and dt values.
         # If a list of episode_timestamps is provided, find the closest episode timestamp to the
         # calculated event_start_timestamp for the current clip_id.
         if self.vector_loader is None:
@@ -977,7 +977,7 @@ class ParquetSegmentGenerator(SegmentListGenerator):
 
         Args:
             clip_id: Identifier for the clip
-            clipgt_index: Index relative to start of clipgt, assuming sampled at 10Hz
+            clipgt_index: Index relative to the cached scene start, assuming sampled at 10Hz
 
         Returns:
             bool: True if the segment exists in trajdata cache, False otherwise

@@ -15,32 +15,14 @@
 
 """Cloud chat-completion client wrappers with retry behavior."""
 
-import logging
 from typing import Any
 
 from tenacity import retry, stop_after_attempt, wait_random_exponential
 
 from coc_labeling.model_clients.openai_client import create_cloud_openai_client
 
-logger = logging.getLogger(__name__)
-
 
 @retry(wait=wait_random_exponential(min=1, max=10), stop=stop_after_attempt(5))
 def completion_with_backoff_cloud(**kwargs: Any) -> Any:
-    """Call cloud completion API with retry for transient failures."""
-    cloud_client = create_cloud_openai_client(api_version="2024-12-01-preview")
-
-    try:
-        response = cloud_client.client.chat.completions.create(**kwargs)
-    except Exception as exc:
-        if "Unauthorized: The token has expired" in str(exc):
-            logger.info("Token expired. Requesting a new OAuth token.")
-            if cloud_client.backend == "nvidia_azure":
-                cloud_client = create_cloud_openai_client(api_version="2024-12-01-preview")
-                response = cloud_client.client.chat.completions.create(**kwargs)
-            else:
-                raise
-        else:
-            raise
-
-    return response
+    """Call the configured public endpoint with bounded transient retries."""
+    return create_cloud_openai_client().client.chat.completions.create(**kwargs)

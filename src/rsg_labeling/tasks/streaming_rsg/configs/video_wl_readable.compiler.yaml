@@ -1,0 +1,26 @@
+infra:
+  metadb: unused-video-only
+  data_dir: unused-video-only
+playground:
+  env:
+    anchor_mode: discovery
+    budgets:
+      max_ops: 96
+      wall_clock_s: 2700
+    cameras:
+      - camera_front_wide_120fov
+    image_max_height_px: 480
+    max_fps: 5.0
+    max_frames: 128
+    meta_action_manifest: null
+    navigation_manifest: null
+    sources: []
+    video_manifest: null
+  task: none
+policy:
+  focus:
+    max_requests: 2
+  observe:
+    max_fps: 1.0
+    max_frames: 3
+    windows: tile:4s

@@ -4,7 +4,6 @@ about: Report incorrect or needed documentation for Alpamayo
 title: "[DOC]"
 labels: "documentation"
 assignees: 'yesfandiari'
-
 ---
 
 ## Report incorrect documentation
@@ -23,7 +22,7 @@ List the commands, configuration, or code paths you checked.
 **Suggested correction**
 Describe the change you recommend, if you have one.
 
----
+______________________________________________________________________
 
 ## Report needed documentation
 

@@ -42,14 +42,6 @@ QWEN_HF_MODEL_MAP = {
     "qwen3.5_35b": "Qwen/Qwen3.5-35B-A3B",
     "qwen3.5_397b_fp8": "Qwen/Qwen3.5-397B-A17B-FP8",
 }
-NV_INFERENCE_MODEL_MAP = {
-    "gpt5": "us/azure/openai/gpt-5",
-    "gpt-5": "us/azure/openai/gpt-5",
-    "gpt5.5": "openai/openai/gpt-5.5",
-    "gpt-5.5": "openai/openai/gpt-5.5",
-}
-NV_INFERENCE_URL = "https://inference-api.nvidia.com"
-NV_AZURE_API_VERSION = "2025-01-01-preview"
 
 _JSON_FENCE_RE = re.compile(r"```(?:json)?\s*([\s\S]*?)\s*```", re.IGNORECASE)
 _THINKING_CLOSE_TAG = "</think>"
@@ -471,34 +463,19 @@ def is_gpt5_family_model_name(model_name: str) -> bool:
 
     GPT-5-family chat completion requests must use ``max_completion_tokens``
     instead of ``max_tokens``. This matches the resolved model/backend name,
-    e.g. the alias ``gpt5.5`` or NVIDIA inference's ``openai/openai/gpt-5.5``.
+    e.g. the alias ``gpt5.5`` or the public model ``gpt-5.5``.
     """
     lowered = model_name.lower()
     return "gpt-5" in lowered or "gpt5" in lowered
 
 
-def resolve_provider_model_name(
-    model_name: str, backend: str, provider_model: str | None = None
-) -> str:
-    """Resolve the provider-side model id for a backend."""
+def resolve_provider_model_name(model_name: str, provider_model: str | None = None) -> str:
+    """Resolve explicit provider overrides and public model aliases."""
     if provider_model:
         return provider_model
     if is_qwen_model_name(model_name):
         return os.environ.get("LOCAL_OPENAI_MODEL", QWEN_HF_MODEL_MAP[model_name])
-    if backend == "nvidia_inference":
-        return os.environ.get(
-            "NV_INFERENCE_MODEL", NV_INFERENCE_MODEL_MAP.get(model_name, model_name)
-        )
-    if model_name in {"gpt5", "gpt5.5"}:
-        return {"gpt5": "gpt-5", "gpt5.5": "gpt-5.5"}[model_name]
-    return model_name
-
-
-def _has_nv_azure_credentials() -> bool:
-    """Return True when NVIDIA-hosted Azure credentials are set."""
-    return bool(
-        os.environ.get("NVHOST_OAI_CLIENT_ID") and os.environ.get("NVHOST_OAI_CLIENT_SECRET")
-    )
+    return {"gpt5": "gpt-5", "gpt5.5": "gpt-5.5"}.get(model_name, model_name)
 
 
 def _resolve_api_key(api_key_env: str | None, candidates: tuple[str, ...]) -> str:
@@ -534,7 +511,7 @@ def create_model_runtime(
                 "OpenAI-compatible vLLM server."
             )
         api_key = _resolve_api_key(api_key_env, ("LOCAL_OPENAI_API_KEY", "OPENAI_API_KEY"))
-        resolved_model = resolve_provider_model_name(model_name, "local", provider_model)
+        resolved_model = resolve_provider_model_name(model_name, provider_model)
         return ModelRuntime(
             client=OpenAI(base_url=base_url.rstrip("/"), api_key=api_key),
             model_name=resolved_model,
@@ -545,54 +522,15 @@ def create_model_runtime(
             uses_max_completion_tokens=False,
         )
 
-    if api_base is None and _has_nv_azure_credentials():
-        repo_src = Path(__file__).resolve().parents[2] / "src"
-        if repo_src.is_dir() and str(repo_src) not in sys.path:
-            sys.path.insert(0, str(repo_src))
-        try:
-            from coc_labeling.model_clients.openai_client import create_cloud_openai_client
-        except ImportError as exc:
-            raise RuntimeError(
-                "NVHOST_OAI_CLIENT_ID/NVHOST_OAI_CLIENT_SECRET are set, but the "
-                "coc_labeling.model_clients.openai_client module is unavailable. Install the "
-                "coc_label_oss package (pip install -e projects/coc_label_oss) to use the "
-                "NVIDIA-hosted Azure route, or set NVIDIA_API_KEY / OPENAI_API_KEY instead."
-            ) from exc
-
-        cloud = create_cloud_openai_client(api_version=NV_AZURE_API_VERSION)
-        resolved_model = resolve_provider_model_name(model_name, cloud.backend, provider_model)
-        return ModelRuntime(
-            client=cloud.client,
-            model_name=resolved_model,
-            backend=cloud.backend,
-            omit_temperature=is_gpt_cloud_model_name(model_name),
-            qwen_disable_thinking=False,
-            default_temperature=0.2,
-            uses_max_completion_tokens=is_gpt5_family_model_name(resolved_model),
-        )
-
     if api_base is not None and api_key_env:
         api_key = _resolve_api_key(api_key_env, ())
-        if api_key != "EMPTY":
-            resolved_model = resolve_provider_model_name(model_name, "openai", provider_model)
-            return ModelRuntime(
-                client=OpenAI(base_url=api_base.rstrip("/"), api_key=api_key),
-                model_name=resolved_model,
-                backend="openai_compatible",
-                omit_temperature=is_gpt_cloud_model_name(model_name),
-                qwen_disable_thinking=False,
-                default_temperature=0.2,
-                uses_max_completion_tokens=is_gpt5_family_model_name(resolved_model),
-            )
-
-    if os.environ.get("NVIDIA_API_KEY"):
-        base_url = api_base or os.environ.get("NV_INFERENCE_URL", NV_INFERENCE_URL)
-        api_key = _resolve_api_key(api_key_env, ("NVIDIA_API_KEY",))
-        resolved_model = resolve_provider_model_name(model_name, "nvidia_inference", provider_model)
+        if api_key == "EMPTY":
+            raise ValueError("The configured api-key-env has no credential")
+        resolved_model = resolve_provider_model_name(model_name, provider_model)
         return ModelRuntime(
-            client=OpenAI(base_url=base_url.rstrip("/"), api_key=api_key),
+            client=OpenAI(base_url=api_base.rstrip("/"), api_key=api_key),
             model_name=resolved_model,
-            backend="nvidia_inference",
+            backend="openai_compatible",
             omit_temperature=is_gpt_cloud_model_name(model_name),
             qwen_disable_thinking=False,
             default_temperature=0.2,
@@ -606,7 +544,7 @@ def create_model_runtime(
         base_url = api_base or os.environ.get("OPENAI_BASE_URL")
         if base_url:
             client_kwargs["base_url"] = base_url.rstrip("/")
-        resolved_model = resolve_provider_model_name(model_name, "openai", provider_model)
+        resolved_model = resolve_provider_model_name(model_name, provider_model)
         return ModelRuntime(
             client=OpenAI(**client_kwargs),
             model_name=resolved_model,
@@ -619,7 +557,7 @@ def create_model_runtime(
 
     raise ValueError(
         "Please configure evaluator credentials. For cloud GPT models, set "
-        "NVHOST_OAI_CLIENT_ID/NVHOST_OAI_CLIENT_SECRET, NVIDIA_API_KEY, or OPENAI_API_KEY. "
+        "OPENAI_API_KEY. "
         "For any OpenAI-compatible endpoint, pass --api-base together with --api-key-env "
         "naming the env var that holds the key. For local Qwen models, set "
         "LOCAL_OPENAI_BASE_URL and LOCAL_OPENAI_API_KEY."
@@ -694,7 +632,7 @@ def resolve_api_key(api_key_env: str | None) -> str:
     candidates = []
     if api_key_env:
         candidates.append(api_key_env)
-    candidates.extend(("OPENAI_API_KEY", "NVIDIA_API_KEY", "LOCAL_OPENAI_API_KEY"))
+    candidates.extend(("OPENAI_API_KEY", "LOCAL_OPENAI_API_KEY"))
     for name in candidates:
         value = os.environ.get(name)
         if value:
@@ -1286,7 +1224,7 @@ def add_common_args(parser: argparse.ArgumentParser, spec: StageSpec) -> None:
     parser.add_argument(
         "--provider-model",
         default=None,
-        help="Optional provider-side model override, similar to NV_INFERENCE_MODEL.",
+        help="Optional explicit provider-side model identifier.",
     )
     parser.add_argument(
         "--api-base",

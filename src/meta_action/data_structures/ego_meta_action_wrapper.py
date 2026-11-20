@@ -13,7 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import List, Tuple, Type, TypeVar
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Tuple, TypeVar
 
 from meta_action.data_structures.ego_meta_action import (
     get_or_compute_lane_segments,
@@ -21,14 +23,17 @@ from meta_action.data_structures.ego_meta_action import (
     get_or_compute_longitudinal_segments,
 )
 from meta_action.data_structures.motion import TemporalMotionChunk
-from meta_action.data_structures.scenario import TemporalScenario
+
 from meta_action.utils.constant import DELTA_TIMESTAMP
+
+if TYPE_CHECKING:
+    from meta_action.data_structures.scenario import TemporalScenario
 
 Interval = Tuple[int, int]
 TTemporalMotion = TypeVar("TTemporalMotion", bound=TemporalMotionChunk)
 
 
-def subtract_stops(a_start: int, a_end: int, stops: List[Interval]) -> List[Interval]:
+def subtract_stops(a_start: int, a_end: int, stops: list[Interval]) -> list[Interval]:
     """Subtract a union of stop intervals from [a_start, a_end) and return
     the list of remaining non-overlapping sub-intervals.
 
@@ -40,7 +45,7 @@ def subtract_stops(a_start: int, a_end: int, stops: List[Interval]) -> List[Inte
         return [(a_start, a_end)]
 
     sorted_stops = sorted(stops, key=lambda x: (x[0], x[1]))
-    remaining: List[Interval] = []
+    remaining: list[Interval] = []
     current_start = a_start
 
     for s_start, s_end in sorted_stops:
@@ -60,25 +65,29 @@ def subtract_stops(a_start: int, a_end: int, stops: List[Interval]) -> List[Inte
     return [(s, e) for (s, e) in remaining if e > s]
 
 
+def segment_tick_bounds(row):
+    """Convert standalone segment start/duration seconds to half-open 10 Hz bounds."""
+    start_time = float(row["segment_start_time"])
+    end_time = start_time + float(row["duration"])
+    return int(round(start_time / DELTA_TIMESTAMP)), int(round(end_time / DELTA_TIMESTAMP))
+
+
 def _get_stop_intervals(
     scenario: TemporalScenario,
     agent_token: str,
-) -> List[Interval]:
+) -> list[Interval]:
     """Build Stop intervals (in ticks) from longitudinal segments.
 
     Returns an empty list if longitudinal segments are unavailable or malformed.
     """
-    stop_intervals: List[Interval] = []
+    stop_intervals: list[Interval] = []
     try:
         long_df = get_or_compute_longitudinal_segments(scenario, agent_token)
         if long_df is not None and len(long_df) > 0:
             for _, lrow in long_df.iterrows():
                 if str(lrow.get("caption", "")) != "Stop":
                     continue
-                l_start_time = float(lrow["segment_start_time"])  # seconds
-                l_end_time = l_start_time + float(lrow["duration"])  # seconds
-                l_start_ts = int(round(l_start_time / DELTA_TIMESTAMP))
-                l_end_ts = int(round(l_end_time / DELTA_TIMESTAMP))
+                l_start_ts, l_end_ts = segment_tick_bounds(lrow)
                 if l_end_ts > l_start_ts:
                     stop_intervals.append((l_start_ts, l_end_ts))
     except Exception:
@@ -97,7 +106,7 @@ class ReverseTemporal(TemporalMotionChunk):
     @staticmethod
     def get_motion_for_scenario(
         agent_token: str, scenario: TemporalScenario
-    ) -> List["ReverseTemporal"]:
+    ) -> list[ReverseTemporal]:
         """Return matching motion chunks for one agent in one scenario."""
         return _build_motions_from_longitudinal(
             agent_token,
@@ -116,7 +125,7 @@ class GentleAccelerationTemporal(TemporalMotionChunk):
     @staticmethod
     def get_motion_for_scenario(
         agent_token: str, scenario: TemporalScenario
-    ) -> List["GentleAccelerationTemporal"]:
+    ) -> list[GentleAccelerationTemporal]:
         """Return matching motion chunks for one agent in one scenario."""
         return _build_motions_from_longitudinal(
             agent_token,
@@ -135,7 +144,7 @@ class StrongAccelerationTemporal(TemporalMotionChunk):
     @staticmethod
     def get_motion_for_scenario(
         agent_token: str, scenario: TemporalScenario
-    ) -> List["StrongAccelerationTemporal"]:
+    ) -> list[StrongAccelerationTemporal]:
         """Return matching motion chunks for one agent in one scenario."""
         return _build_motions_from_longitudinal(
             agent_token,
@@ -154,7 +163,7 @@ class GentleDecelerationTemporal(TemporalMotionChunk):
     @staticmethod
     def get_motion_for_scenario(
         agent_token: str, scenario: TemporalScenario
-    ) -> List["GentleDecelerationTemporal"]:
+    ) -> list[GentleDecelerationTemporal]:
         """Return matching motion chunks for one agent in one scenario."""
         return _build_motions_from_longitudinal(
             agent_token,
@@ -173,7 +182,7 @@ class StrongDecelerationTemporal(TemporalMotionChunk):
     @staticmethod
     def get_motion_for_scenario(
         agent_token: str, scenario: TemporalScenario
-    ) -> List["StrongDecelerationTemporal"]:
+    ) -> list[StrongDecelerationTemporal]:
         """Return matching motion chunks for one agent in one scenario."""
         return _build_motions_from_longitudinal(
             agent_token,
@@ -192,7 +201,7 @@ class MaintainSpeedTemporal(TemporalMotionChunk):
     @staticmethod
     def get_motion_for_scenario(
         agent_token: str, scenario: TemporalScenario
-    ) -> List["MaintainSpeedTemporal"]:
+    ) -> list[MaintainSpeedTemporal]:
         """Return matching motion chunks for one agent in one scenario."""
         return _build_motions_from_longitudinal(
             agent_token,
@@ -209,9 +218,7 @@ class StopTemporal(TemporalMotionChunk):
         super().__init__(agent_token, start_ts, end_ts)
 
     @staticmethod
-    def get_motion_for_scenario(
-        agent_token: str, scenario: TemporalScenario
-    ) -> List["StopTemporal"]:
+    def get_motion_for_scenario(agent_token: str, scenario: TemporalScenario) -> list[StopTemporal]:
         """Return matching motion chunks for one agent in one scenario."""
         return _build_motions_from_longitudinal(
             agent_token, scenario, target_caption="Stop", temp_motion_class=StopTemporal
@@ -222,10 +229,10 @@ def _build_motions_from_longitudinal(
     agent_token: str,
     scenario: TemporalScenario,
     target_caption: str,
-    temp_motion_class: Type[TTemporalMotion],
-) -> List[TTemporalMotion]:
+    temp_motion_class: type[TTemporalMotion],
+) -> list[TTemporalMotion]:
     """Build temporal motions directly from the precomputed longitudinal segments"""
-    motions: List[TTemporalMotion] = []
+    motions: list[TTemporalMotion] = []
     df = get_or_compute_longitudinal_segments(scenario, agent_token)
     if df is None or len(df) == 0:
         return motions
@@ -233,11 +240,7 @@ def _build_motions_from_longitudinal(
     for _, row in df.iterrows():
         if str(row.get("caption", "")) != target_caption:
             continue
-        start_time = float(row["segment_start_time"])  # seconds
-        end_time = start_time + float(row["duration"])  # seconds
-        # Convert to ticks
-        start_ts = int(round(start_time / DELTA_TIMESTAMP))
-        end_ts = int(round(end_time / DELTA_TIMESTAMP))
+        start_ts, end_ts = segment_tick_bounds(row)
         if end_ts <= start_ts:
             continue
         motions.append(temp_motion_class(agent_token, start_ts, end_ts))
@@ -249,12 +252,12 @@ def _build_motions_from_lateral(
     agent_token: str,
     scenario: TemporalScenario,
     target_caption: str,
-    temp_motion_class: Type[TTemporalMotion],
-) -> List[TTemporalMotion]:
+    temp_motion_class: type[TTemporalMotion],
+) -> list[TTemporalMotion]:
     """Build temporal motions directly from lateral (turning) segments computed via
     heading-change rate per distance.
     """
-    motions: List[TTemporalMotion] = []
+    motions: list[TTemporalMotion] = []
     class_df = get_or_compute_lateral_segments(scenario, agent_token)
     if class_df is None or len(class_df) == 0:
         return motions
@@ -265,10 +268,7 @@ def _build_motions_from_lateral(
     for _, row in class_df.iterrows():
         if str(row.get("caption", "")) != target_caption:
             continue
-        start_time = float(row["segment_start_time"])  # seconds
-        end_time = start_time + float(row["duration"])  # seconds
-        start_ts = int(round(start_time / DELTA_TIMESTAMP))
-        end_ts = int(round(end_time / DELTA_TIMESTAMP))
+        start_ts, end_ts = segment_tick_bounds(row)
         if end_ts <= start_ts:
             continue
         # Subtract Stop intervals: keep non-overlapping parts only. If fully covered, skip.
@@ -284,10 +284,10 @@ def _build_motions_from_lane(
     agent_token: str,
     scenario: TemporalScenario,
     target_caption: str,
-    temp_motion_class: Type[TTemporalMotion],
-) -> List[TTemporalMotion]:
+    temp_motion_class: type[TTemporalMotion],
+) -> list[TTemporalMotion]:
     """Build temporal motions directly from lane segments."""
-    motions: List[TTemporalMotion] = []
+    motions: list[TTemporalMotion] = []
     class_df = get_or_compute_lane_segments(scenario, agent_token)
     if class_df is None or len(class_df) == 0:
         return motions
@@ -298,10 +298,7 @@ def _build_motions_from_lane(
     for _, row in class_df.iterrows():
         if str(row.get("caption", "")) != target_caption:
             continue
-        start_time = float(row["segment_start_time"])  # seconds
-        end_time = start_time + float(row["duration"])  # seconds
-        start_ts = int(round(start_time / DELTA_TIMESTAMP))
-        end_ts = int(round(end_time / DELTA_TIMESTAMP))
+        start_ts, end_ts = segment_tick_bounds(row)
         if end_ts <= start_ts:
             continue
         # Subtract Stop intervals: keep non-overlapping parts only. If fully covered, skip.
@@ -322,7 +319,7 @@ class LeftLaneChangeTemporal(TemporalMotionChunk):
     @staticmethod
     def get_motion_for_scenario(
         agent_token: str, scenario: TemporalScenario
-    ) -> List["LeftLaneChangeTemporal"]:
+    ) -> list[LeftLaneChangeTemporal]:
         """Return matching motion chunks for one agent in one scenario."""
         return _build_motions_from_lane(
             agent_token,
@@ -341,7 +338,7 @@ class RightLaneChangeTemporal(TemporalMotionChunk):
     @staticmethod
     def get_motion_for_scenario(
         agent_token: str, scenario: TemporalScenario
-    ) -> List["RightLaneChangeTemporal"]:
+    ) -> list[RightLaneChangeTemporal]:
         """Return matching motion chunks for one agent in one scenario."""
         return _build_motions_from_lane(
             agent_token,
@@ -360,7 +357,7 @@ class LaneKeepTemporal(TemporalMotionChunk):
     @staticmethod
     def get_motion_for_scenario(
         agent_token: str, scenario: TemporalScenario
-    ) -> List["LaneKeepTemporal"]:
+    ) -> list[LaneKeepTemporal]:
         """Return matching motion chunks for one agent in one scenario."""
         return _build_motions_from_lane(
             agent_token,
@@ -379,7 +376,7 @@ class SlightlyShiftLeftTemporal(TemporalMotionChunk):
     @staticmethod
     def get_motion_for_scenario(
         agent_token: str, scenario: TemporalScenario
-    ) -> List["SlightlyShiftLeftTemporal"]:
+    ) -> list[SlightlyShiftLeftTemporal]:
         """Return matching motion chunks for one agent in one scenario."""
         return _build_motions_from_lane(
             agent_token,
@@ -398,7 +395,7 @@ class SlightlyShiftRightTemporal(TemporalMotionChunk):
     @staticmethod
     def get_motion_for_scenario(
         agent_token: str, scenario: TemporalScenario
-    ) -> List["SlightlyShiftRightTemporal"]:
+    ) -> list[SlightlyShiftRightTemporal]:
         """Return matching motion chunks for one agent in one scenario."""
         return _build_motions_from_lane(
             agent_token,
@@ -417,7 +414,7 @@ class TurnLeftTemporal(TemporalMotionChunk):
     @staticmethod
     def get_motion_for_scenario(
         agent_token: str, scenario: TemporalScenario
-    ) -> List["TurnLeftTemporal"]:
+    ) -> list[TurnLeftTemporal]:
         """Return matching motion chunks for one agent in one scenario."""
         return _build_motions_from_lane(
             agent_token,
@@ -436,7 +433,7 @@ class TurnRightTemporal(TemporalMotionChunk):
     @staticmethod
     def get_motion_for_scenario(
         agent_token: str, scenario: TemporalScenario
-    ) -> List["TurnRightTemporal"]:
+    ) -> list[TurnRightTemporal]:
         """Return matching motion chunks for one agent in one scenario."""
         return _build_motions_from_lane(
             agent_token,
@@ -455,7 +452,7 @@ class FollowCurveLeftTemporal(TemporalMotionChunk):
     @staticmethod
     def get_motion_for_scenario(
         agent_token: str, scenario: TemporalScenario
-    ) -> List["FollowCurveLeftTemporal"]:
+    ) -> list[FollowCurveLeftTemporal]:
         """Return matching motion chunks for one agent in one scenario."""
         return _build_motions_from_lane(
             agent_token,
@@ -474,7 +471,7 @@ class FollowCurveRightTemporal(TemporalMotionChunk):
     @staticmethod
     def get_motion_for_scenario(
         agent_token: str, scenario: TemporalScenario
-    ) -> List["FollowCurveRightTemporal"]:
+    ) -> list[FollowCurveRightTemporal]:
         """Return matching motion chunks for one agent in one scenario."""
         return _build_motions_from_lane(
             agent_token,
@@ -493,7 +490,7 @@ class ReverseRightTemporal(TemporalMotionChunk):
     @staticmethod
     def get_motion_for_scenario(
         agent_token: str, scenario: TemporalScenario
-    ) -> List["ReverseRightTemporal"]:
+    ) -> list[ReverseRightTemporal]:
         """Return matching motion chunks for one agent in one scenario."""
         return _build_motions_from_lateral(
             agent_token,
@@ -512,7 +509,7 @@ class ReverseLeftTemporal(TemporalMotionChunk):
     @staticmethod
     def get_motion_for_scenario(
         agent_token: str, scenario: TemporalScenario
-    ) -> List["ReverseLeftTemporal"]:
+    ) -> list[ReverseLeftTemporal]:
         """Return matching motion chunks for one agent in one scenario."""
         return _build_motions_from_lateral(
             agent_token,
@@ -531,7 +528,7 @@ class SteerRightTemporal(TemporalMotionChunk):
     @staticmethod
     def get_motion_for_scenario(
         agent_token: str, scenario: TemporalScenario
-    ) -> List["SteerRightTemporal"]:
+    ) -> list[SteerRightTemporal]:
         """Return matching motion chunks for one agent in one scenario."""
         return _build_motions_from_lateral(
             agent_token,
@@ -550,7 +547,7 @@ class SteerLeftTemporal(TemporalMotionChunk):
     @staticmethod
     def get_motion_for_scenario(
         agent_token: str, scenario: TemporalScenario
-    ) -> List["SteerLeftTemporal"]:
+    ) -> list[SteerLeftTemporal]:
         """Return matching motion chunks for one agent in one scenario."""
         return _build_motions_from_lateral(
             agent_token,
@@ -569,7 +566,7 @@ class SharpSteerRightTemporal(TemporalMotionChunk):
     @staticmethod
     def get_motion_for_scenario(
         agent_token: str, scenario: TemporalScenario
-    ) -> List["SharpSteerRightTemporal"]:
+    ) -> list[SharpSteerRightTemporal]:
         """Return matching motion chunks for one agent in one scenario."""
         return _build_motions_from_lateral(
             agent_token,
@@ -588,7 +585,7 @@ class SharpSteerLeftTemporal(TemporalMotionChunk):
     @staticmethod
     def get_motion_for_scenario(
         agent_token: str, scenario: TemporalScenario
-    ) -> List["SharpSteerLeftTemporal"]:
+    ) -> list[SharpSteerLeftTemporal]:
         """Return matching motion chunks for one agent in one scenario."""
         return _build_motions_from_lateral(
             agent_token,
@@ -607,7 +604,7 @@ class GoStraightTemporal(TemporalMotionChunk):
     @staticmethod
     def get_motion_for_scenario(
         agent_token: str, scenario: TemporalScenario
-    ) -> List["GoStraightTemporal"]:
+    ) -> list[GoStraightTemporal]:
         """Return matching motion chunks for one agent in one scenario."""
         return _build_motions_from_lateral(
             agent_token,

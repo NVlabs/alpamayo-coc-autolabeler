@@ -23,6 +23,8 @@ from typing import Any, Dict
 
 import coc_labeling.prompts.vlm.coc as prompt
 import coc_labeling.prompts.vlm.coc_repair_lateral as repair_prompt
+from coc_labeling.request import build_coc_messages
+
 from coc_labeling.model_clients.timeout import TIMEOUT_MAX
 from coc_labeling.model_clients.vlm_wrapper import VLMWrapper
 from coc_labeling.prompts.common import OutputSchema
@@ -85,13 +87,6 @@ class VLMCoCAgent:
             prompt_module.__name__.split(".")[-1],
         )
 
-    def _render_prompt_text(self, prompt_module: Any, attr_name: str) -> str:
-        """Render prompt text from config-aware prompt modules when available."""
-        render_func = getattr(prompt_module, f"render_{attr_name}", None)
-        if callable(render_func):
-            return render_func(self.data_loader_config)
-        return getattr(prompt_module, attr_name)
-
     def process_results(
         self,
         data: DataDict,
@@ -147,37 +142,13 @@ class VLMCoCAgent:
 
     def _build_input_message_with_prompt(self, data: DataDict, prompt_module: Any) -> list[Message]:
         """Construct messages for a given prompt module."""
-        hist_fpv_frames = data["hist_fpv_frames"]
-        fut_fpv_frames = data["fut_fpv_frames"]
-        all_fpv_frames = hist_fpv_frames + fut_fpv_frames
-        all_meta_actions = data["all_meta_action_str"]
-        all_ego_text = data["ego_text"]
-        return [
-            {"role": "system", "m_type": "text", "content": prompt_module.system},
-            {
-                "role": "user",
-                "m_type": "text",
-                "content": self._render_prompt_text(prompt_module, "images_prompt"),
-            },
-            {"role": "user", "m_type": "video", "content": all_fpv_frames},
-            {
-                "role": "user",
-                "m_type": "text",
-                "content": prompt_module.meta_action_prompt,
-            },
-            {"role": "user", "m_type": "text", "content": all_meta_actions},
-            {
-                "role": "user",
-                "m_type": "text",
-                "content": prompt_module.ego_state_prompt,
-            },
-            {"role": "user", "m_type": "text", "content": all_ego_text},
-            {
-                "role": "user",
-                "m_type": "text",
-                "content": self._render_prompt_text(prompt_module, "output_prompts"),
-            },
-        ]
+        return build_coc_messages(
+            prompt_module,
+            self.data_loader_config,
+            data["all_meta_action_str"],
+            data["ego_text"],
+            data["hist_fpv_frames"] + data["fut_fpv_frames"],
+        )
 
     def _build_input_message(self, data: DataDict) -> list[Message]:
         """Construct the common system/user messages for a single-pass CoC run."""

@@ -45,7 +45,7 @@ video:
 vector:
   <<: *temporal_defaults
   trajdata:
-    dataset: clipgt
+    dataset: pai
     split: all
     num_workers: 128
     max_agent_num: 50

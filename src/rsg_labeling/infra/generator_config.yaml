@@ -1,0 +1,88 @@
+# This config is used to generate the dataset from the raw data
+# It is necessary to obtain accurate projection in data_explorer.py
+data:
+  camera_front_wide_120fov:
+    # 3840x2160  -> (bottom Crop + left right side crop) 3456 * 2160  -> (resize) 512 * 320
+    crop_h: 2160
+    crop_w: 3456
+    size_h: 320
+    size_w: 512
+    fps: 30
+  camera_cross_left_120fov:
+    crop_h: 2160
+    crop_w: 3456
+    size_h: 320
+    size_w: 512
+    fps: 30
+  camera_cross_right_120fov:
+    crop_h: 2160
+    crop_w: 3456
+    size_h: 320
+    size_w: 512
+    fps: 30
+  camera_front_tele_30fov:
+    crop_h: 2160
+    crop_w: 3456
+    size_h: 320
+    size_w: 512
+    fps: 30
+  camera_front_tele_sat_30fov:
+    crop_h: 2160
+    crop_w: 3456
+    size_h: 320
+    size_w: 512
+    fps: 30
+  camera_rear_tele_30fov:
+    crop_h: 2160
+    crop_w: 3456
+    size_h: 320
+    size_w: 512
+    fps: 30
+  camera_left_fisheye_200fov:
+    # Source formats: 1936x1216 or 1920x1536.
+    # Crop width to the smaller of the two dimensions, scale
+    crop_h: 1200
+    crop_w: 1920
+    size_h: 320
+    size_w: 512
+    fps: 30
+  camera_rear_fisheye_200fov:
+    # Source formats: 1936x1216 or 1920x1536.
+    crop_h: 1200
+    crop_w: 1920
+    size_h: 320
+    size_w: 512
+    fps: 30
+  camera_right_fisheye_200fov:
+    # Source formats: 1936x1216 or 1920x1536.
+    crop_h: 1200
+    crop_w: 1920
+    size_h: 320
+    size_w: 512
+    fps: 30
+  camera_front_fisheye_200fov:
+    # Source formats: 1936x1216 or 1920x1536.
+    crop_h: 1200
+    crop_w: 1920
+    size_h: 320
+    size_w: 512
+    fps: 30
+  camera_rear_right_70fov:
+    crop_h: 2160
+    crop_w: 3456
+    size_h: 320
+    size_w: 512
+    fps: 30
+  camera_rear_left_70fov:
+    crop_h: 2160
+    crop_w: 3456
+    size_h: 320
+    size_w: 512
+    fps: 30
+
+conversion:
+  name: AV2fps-320x512
+  strict: True
+  dataset_attr: labels
+  maxsize: 1e9
+  maxcount: 4000

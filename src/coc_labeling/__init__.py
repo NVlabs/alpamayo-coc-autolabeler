@@ -12,3 +12,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+"""CoC planning and labeling workflows."""
+
+from coc_labeling._build_info import SOURCE_SHA256 as component_source_sha256
+from coc_labeling._build_info import VERSION as __version__
+
+__all__ = ["__version__", "component_source_sha256"]

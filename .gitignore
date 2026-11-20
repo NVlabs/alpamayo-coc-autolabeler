@@ -2,5 +2,16 @@ __pycache__
 **/__pycache__
 *.pyc
 .vscode
+api_keys.py
 */*.DS_Store
+exp
 src/*_egg/
+src/coc_labeling/config/result_catalog/
+
+build/
+
+dist/
+
+*.egg-info/
+
+.pytest_cache/

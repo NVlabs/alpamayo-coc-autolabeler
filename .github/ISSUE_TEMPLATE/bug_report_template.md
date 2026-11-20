@@ -4,14 +4,13 @@ about: Create a bug report to help us improve Alpamayo
 title: "[BUG]"
 labels: "bug"
 assignees: 'yesfandiari'
-
 ---
 
 **Describe the bug**
 Provide a clear and concise description of the problem.
 
 **Affected pipeline stage**
-Which stage is affected: meta-action generation, keyframe selection, CoC 
+Which stage is affected: meta-action generation, keyframe selection, CoC
 label generation, visualization, or another component?
 
 **Steps and code to reproduce**
@@ -27,6 +26,7 @@ Include the complete error message, traceback, and relevant logs. Use fenced
 code blocks for commands and logs.
 
 **Input and model details (please complete the applicable information)**
+
 - Dataset and version:
 - Input layout and affected clip IDs or a minimal sample description:
 - Model backend and `model_name`:
@@ -35,6 +35,7 @@ code blocks for commands and logs.
 - Meta-action filter, worker count, and batch size:
 
 **Environment details (please complete the applicable information)**
+
 - Installation method: Docker or source
 - Repository commit or release version:
 - Operating system:

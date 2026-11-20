@@ -27,6 +27,13 @@ RUN apt-get update -y \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
+# Use the same Python 3.12 family as the locked standalone runtime.
+COPY --from=ghcr.io/astral-sh/uv:0.8.13 /uv /usr/local/bin/uv
+ENV UV_PYTHON_INSTALL_DIR=/opt/python
+RUN uv python install 3.12.11 \
+    && uv venv --python 3.12.11 --seed /opt/venv
+ENV PATH="/opt/venv/bin:${PATH}"
+
 COPY requirements-lock.txt /tmp/requirements-lock.txt
 
 RUN pip install --upgrade pip

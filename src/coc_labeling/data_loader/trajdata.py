@@ -22,6 +22,8 @@ import torch
 from omegaconf import DictConfig
 from trajdata.data_structures.agent import AgentType
 
+from coc_labeling.request import project_speed_to_heading
+
 np.set_printoptions(suppress=True, precision=10, threshold=np.inf)
 torch.set_printoptions(sci_mode=False, precision=10, threshold=float("inf"))
 
@@ -153,21 +155,11 @@ def convert_trajdata2data_dict(scene_batch: Any, vector_config: DictConfig) -> D
         data_dict["ego_fut_heading"] = ego_fut_heading
 
         ########## longitudinal and lateral speed (with projection)
-        cos_heading_hist = np.cos(ego_hist_heading)
-        sin_heading_hist = np.sin(ego_hist_heading)
-        ego_hist_longitudinal_speed = (
-            ego_hist_vel[:, 0] * cos_heading_hist + ego_hist_vel[:, 1] * sin_heading_hist
+        ego_hist_longitudinal_speed, ego_hist_lateral_speed = project_speed_to_heading(
+            ego_hist_vel, ego_hist_heading
         )
-        ego_hist_lateral_speed = (
-            -ego_hist_vel[:, 0] * sin_heading_hist + ego_hist_vel[:, 1] * cos_heading_hist
-        )
-        cos_heading_fut = np.cos(ego_fut_heading)
-        sin_heading_fut = np.sin(ego_fut_heading)
-        ego_fut_longitudinal_speed = (
-            ego_fut_vel[:, 0] * cos_heading_fut + ego_fut_vel[:, 1] * sin_heading_fut
-        )
-        ego_fut_lateral_speed = (
-            -ego_fut_vel[:, 0] * sin_heading_fut + ego_fut_vel[:, 1] * cos_heading_fut
+        ego_fut_longitudinal_speed, ego_fut_lateral_speed = project_speed_to_heading(
+            ego_fut_vel, ego_fut_heading
         )
         data_dict["ego_hist_longitudinal_speed"] = ego_hist_longitudinal_speed
         data_dict["ego_hist_lateral_speed"] = ego_hist_lateral_speed

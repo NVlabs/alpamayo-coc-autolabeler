@@ -40,6 +40,13 @@ def prepare_longitudinal_data(scenario: Any, agent_token: str) -> pd.DataFrame:
         else np.asarray(speed_along_t, dtype=float)
     )
 
+    return prepare_longitudinal_features(speed, speed_along)
+
+
+def prepare_longitudinal_features(speed: np.ndarray, speed_along: np.ndarray) -> pd.DataFrame:
+    """Build longitudinal features from speeds on the uniform 10 Hz grid."""
+    speed = np.asarray(speed, dtype=float)
+    speed_along = np.asarray(speed_along, dtype=float)
     acc = np.diff(speed) / float(DELTA_TIMESTAMP)
     if acc.size == 0:
         acc = np.zeros_like(speed)
@@ -64,6 +71,18 @@ def segment_longitudinal(
     """Segment one agent's longitudinal trajectory into motion-consistent spans."""
     # Prepare per-agent DataFrame with required series
     df_series = prepare_longitudinal_data(scenario, agent_token)
+    return segment_longitudinal_features(
+        df_series, segmentation_thresholds, accel_smoothing_window, hysteresis_fraction
+    )
+
+
+def segment_longitudinal_features(
+    df_series: pd.DataFrame,
+    segmentation_thresholds: List[Threshold] = LONGITUDINAL_SEGMENTATION_THRESHOLDS,
+    accel_smoothing_window: int = 5,
+    hysteresis_fraction: float = 0.15,
+) -> pd.DataFrame:
+    """Segment prepared longitudinal features using the standalone motion rules."""
 
     speeds = df_series["agent_speed"].to_numpy(dtype=float)
     speeds_along = df_series["agent_speed_along_heading"].to_numpy(dtype=float)

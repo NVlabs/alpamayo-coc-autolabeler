@@ -111,7 +111,7 @@ def create_argparser() -> argparse.ArgumentParser:
         "--dataset_name",
         type=str,
         default="pai",
-        help="Dataset key used by trajdata (for example: pai, mads).",
+        help="Dataset key used by trajdata (for example: pai).",
     )
     argparser.add_argument(
         "--meta_action_names",

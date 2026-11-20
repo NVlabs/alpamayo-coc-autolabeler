@@ -237,7 +237,7 @@ class VideoLoader:
             ValueError: If video FPS is not a multiple of config FPS.
         """
         with self._video_capture(video_path) as cap:
-            frame_rate = int(cap.get(cv2.CAP_PROP_FPS))  # clipgt has 30 fps
+            frame_rate = int(cap.get(cv2.CAP_PROP_FPS))
 
             # If source video fps differs from configured fps, map source indices to
             # a sampled timeline at configured fps.

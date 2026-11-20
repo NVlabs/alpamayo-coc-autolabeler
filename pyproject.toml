@@ -1,40 +1,49 @@
 [build-system]
-requires = ["setuptools>=68", "wheel"]
+requires = ["setuptools>=77", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "coc-autolabeling"
-version = "1.0.0"
-description = "Chain-of-Causation (CoC) Autolabeling Pipeline."
+version = "2.0.0"
+description = "Chain-of-Causation and Reasoning Scene Graph Autolabeling Pipeline."
 readme = "README.md"
-license = { text = "Apache-2.0" }
-requires-python = ">=3.9"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+requires-python = ">=3.11"
 classifiers = [
-  "License :: OSI Approved :: Apache Software License",
   "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
 ]
-dependencies = [
-  "numpy",
-  "pandas",
+dependencies = ["numpy>=2.1,<3", "pandas>=2.2.3,<4", "pydantic>=2.9,<3"]
+
+[project.optional-dependencies]
+pipeline = [
   "pyarrow",
   "PyYAML",
   "omegaconf",
   "hydra-core",
-  "pydantic",
   "requests",
   "openai",
   "httpx",
   "tenacity",
   "torch",
-  "trajdata @ git+https://github.com/NVlabs/trajdata.git@coc_autolabeling-1.0.0",
   "tqdm",
   "opencv-python",
+  "trajdata @ git+https://github.com/NVlabs/trajdata.git@coc_autolabeling-1.0.0",
 ]
-
-[project.optional-dependencies]
-dev = ["pytest", "pyright", "ruff"]
+streaming = [
+  "pyarrow",
+  "PyYAML",
+  "requests",
+  "torch",
+  "scipy",
+  "Pillow",
+  "opencv-python",
+]
 qwen = ["qwen-vl-utils", "transformers", "vllm"]
+dev = ["pytest", "pyright", "ruff", "build", "setuptools>=77", "wheel"]
 
 [project.scripts]
 meta-action-autolabel = "meta_action.data_labeling:main"
@@ -44,7 +53,7 @@ package-dir = { "" = "src" }
 
 [tool.setuptools.packages.find]
 where = ["src"]
-include = ["coc_labeling*", "meta_action*"]
+include = ["coc_labeling*", "meta_action*", "rsg_labeling*"]
 
 [tool.setuptools.package-data]
 coc_labeling = [
@@ -53,6 +62,11 @@ coc_labeling = [
   "config/data_loader/*.yaml",
   "config/misc/*.yaml",
 ]
+rsg_labeling = ["**/*.yaml", "**/*.json", "**/*.md"]
+
+[tool.setuptools.cmdclass]
+build_py = "_coc_build_support.CheckedBuildPy"
+sdist = "_coc_build_support.CheckedSdist"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
